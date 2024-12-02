@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { signMessage } from '../utils/web3';
+import { mapStringToPublicKey, getMessageHash } from '../utils/contractInteraction';
 
 const SignMessage = ({ account }) => {
   const [message, setMessage] = useState('');
   const [signature, setSignature] = useState('');
+  const [messageHash, setMessageHash] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [txHash, setTxHash] = useState('');
 
-  const handleSign = async () => {
+  const handleProcess = async () => {
     if (!message) {
       setError('Please enter a message to sign');
       return;
@@ -16,6 +19,16 @@ const SignMessage = ({ account }) => {
     try {
       setError('');
       setLoading(true);
+
+      // Step 1: Map string to public key using admin wallet
+      const mappingTxHash = await mapStringToPublicKey(message, account);
+      setTxHash(mappingTxHash);
+
+      // Step 2: Get message hash
+      const hash = await getMessageHash(message);
+      setMessageHash(hash);
+
+      // Step 3: Sign the message with user's MetaMask
       const sig = await signMessage(message, account);
       setSignature(sig);
     } catch (err) {
@@ -50,7 +63,7 @@ const SignMessage = ({ account }) => {
       )}
 
       <button
-        onClick={handleSign}
+        onClick={handleProcess}
         disabled={loading || !message}
         className={`w-full py-2 px-4 rounded-md text-white font-medium ${
           loading || !message
@@ -58,8 +71,26 @@ const SignMessage = ({ account }) => {
             : 'bg-purple-600 hover:bg-purple-700'
         }`}
       >
-        {loading ? 'Signing...' : 'Sign Message'}
+        {loading ? 'Processing...' : 'Process Message'}
       </button>
+
+      {txHash && (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Transaction Hash:</h4>
+          <div className="p-3 bg-gray-100 rounded-md">
+            <p className="text-sm font-mono break-all">{txHash}</p>
+          </div>
+        </div>
+      )}
+
+      {messageHash && (
+        <div className="mt-4">
+          <h4 className="text-sm font-medium text-gray-700 mb-2">Message Hash:</h4>
+          <div className="p-3 bg-gray-100 rounded-md">
+            <p className="text-sm font-mono break-all">{messageHash}</p>
+          </div>
+        </div>
+      )}
 
       {signature && (
         <div className="mt-4">
